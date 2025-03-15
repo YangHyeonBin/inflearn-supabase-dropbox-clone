@@ -24,7 +24,7 @@ export default function Ui() {
             <FileDropzone />
 
             {/* file list */}
-            <FileList />
+            <FileList searchInput={searchInput} />
         </main>
     );
 }
