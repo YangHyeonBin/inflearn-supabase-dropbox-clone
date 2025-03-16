@@ -5,7 +5,7 @@ import {
     useDownloadFileMutation,
 } from "services/useFileQueries";
 import { getImageUrl } from "utils/supabase/storage";
-import { formatBytes, formatDate } from "utils/utils";
+import { formatBytes, formatDate, getDecodedFileName } from "utils/utils";
 
 export default function DropboxFile({ file }: { file: any }) {
     const downloadFile = useDownloadFileMutation();
@@ -20,7 +20,7 @@ export default function DropboxFile({ file }: { file: any }) {
                     className="rounded-md"
                 />
             </div>
-            <div className="text-md px-2">{file.name}</div>
+            <div className="text-md px-2">{getDecodedFileName(file.name)}</div>
             <div className="text-sm px-2 flex flex-row gap-2 text-gray-500">
                 <span>{file.metadata.mimetype}</span>
                 <span>-</span>

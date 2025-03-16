@@ -32,12 +32,24 @@ export function useUploadFileMutation() {
 export function useDownloadFileMutation() {
     return useMutation({
         mutationFn: downloadFile,
-        onSuccess: (data) => {
-            const url = data.publicUrl;
+        onSuccess: async (data) => {
+            // 1. 파일 URL에서 데이터 가져오기
+            const response = await fetch(data.data.publicUrl);
+            const blob = await response.blob();
+
+            // 2. Blob URL 생성
+            // 로컬 Blobk URL을 사용하면 download 속성이 항상 적용되어,
+            // 디코딩된 파일명으로 저장 가능함
+            const blobUrl = URL.createObjectURL(blob);
+
+            // 3. 다운로드 링크 생성 및 클릭
             const link = document.createElement("a");
-            link.href = url;
-            link.download = url.split("/").pop()!; // file name 추출
+            link.href = blobUrl;
+            link.download = data.filename; // 원본 파일명 사용
             link.click();
+
+            // 4. Blob URL 정리
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
         },
         onError: (error) => {
             console.error(error);

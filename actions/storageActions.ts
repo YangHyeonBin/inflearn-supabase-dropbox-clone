@@ -1,6 +1,7 @@
 "use server";
 
 import { createServerSupabaseClient } from "utils/supabase/server";
+import { getDecodedFileName, getEncodedFileName } from "utils/utils";
 
 function handleError(error: Error) {
     console.error(error);
@@ -10,15 +11,40 @@ function handleError(error: Error) {
 export async function uploadFile(formData: FormData) {
     const supabase = await createServerSupabaseClient(); // await으로 수퍼베이스 클라이언트 생성
     const files = Array.from(formData.entries()).map(
-        ([name, file]) => file as File // destructuring해 file만 뽑아옴
+        ([name, file]) => ({ name, file }) // destructuring해 file만 뽑아옴
     );
+
+    // file.name이 aws s3 safe하지 않을 경우, 이름을 변경해서 업로드 해야 함
+    const processedFiles = files.map(({ name, file }) => {
+        const originalName = name;
+        console.log(name);
+        const s3Compatible = /^[a-zA-Z0-9._-]+$/.test(originalName);
+        console.log("s3 ok:", s3Compatible);
+
+        // S3 호환되면 그대로, 아니면 인코딩 접두사 추가
+        const s3Name = s3Compatible
+            ? originalName
+            : getEncodedFileName(originalName);
+        console.log(s3Name);
+
+        return {
+            file,
+            s3Name,
+            // originalName,
+        };
+    });
 
     // upload
     const results = await Promise.all(
-        files.map((file) =>
+        processedFiles.map((file) =>
             supabase.storage
                 .from(process.env.NEXT_PUBLIC_STORAGE_BUCKET!)
-                .upload(file.name, file, { upsert: true })
+                .upload(file.s3Name, file.file, {
+                    upsert: true,
+                    // metadata: {
+                    //     originalName: file.originalName,
+                    // },
+                })
         )
     );
 
@@ -31,6 +57,7 @@ export async function uploadFile(formData: FormData) {
 
 export async function searchFile(searchQuery: string) {
     const supabase = await createServerSupabaseClient();
+    const encodedQuery = getEncodedFileName(searchQuery);
 
     const { data, error } = await supabase.storage
         .from(process.env.NEXT_PUBLIC_STORAGE_BUCKET!)
@@ -38,7 +65,7 @@ export async function searchFile(searchQuery: string) {
             undefined, // string | undefined인 path, path로 찾는거 아니니 undefined 넘김
             {
                 // search options
-                search: searchQuery,
+                search: encodedQuery,
             }
         );
 
@@ -57,7 +84,12 @@ export async function downloadFile(path: string) {
         // .download(path);
         .getPublicUrl(path, { download: true });
 
-    return data;
+    // 원본 파일명 추출 및 디코딩
+    const filename = path.startsWith("b64_") ? getDecodedFileName(path) : path;
+    console.log(filename);
+    console.log(path);
+
+    return { data, filename };
 }
 
 export async function deleteFile(path: string) {
