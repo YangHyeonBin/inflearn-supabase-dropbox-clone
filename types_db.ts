@@ -12,8 +12,9 @@ export type Database = {
       file: {
         Row: {
           created_at: string
+          decoded_name: string
+          encoded_name: string
           id: string
-          name: string
           path: string
           size: number
           type: string
@@ -21,8 +22,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          decoded_name: string
+          encoded_name: string
           id?: string
-          name: string
           path: string
           size: number
           type: string
@@ -30,8 +32,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          decoded_name?: string
+          encoded_name?: string
           id?: string
-          name?: string
           path?: string
           size?: number
           type?: string
