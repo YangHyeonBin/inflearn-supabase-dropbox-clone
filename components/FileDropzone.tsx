@@ -1,47 +1,53 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback } from "react";
+import { useDropzone } from "react-dropzone";
 import { useUploadFileMutation } from "services/useFileQueries";
 
 export default function FileDropzone() {
-    const fileRef = useRef<HTMLInputElement>(null); // 파일 업로드 인풋 ref, 이걸로 접근 가능
     const updateFile = useUploadFileMutation();
 
+    const onDrop = useCallback(async (acceptedFiles) => {
+        if (acceptedFiles.length > 0) {
+            const formData = new FormData();
+            acceptedFiles.forEach((file) => {
+                formData.append(file.name, file); // 식별할 수 있는 형태로 저장
+            });
+
+            await updateFile.mutateAsync(formData);
+        }
+    }, []);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        multiple: true,
+        accept: {
+            "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"],
+        },
+    });
+
     return (
-        <form
-            className="w-full flex flex-col items-center py-20 border-2 border-dashed border-slate-300"
-            onSubmit={async (e) => {
-                // 예상치 못한 form 태그의 자체 동작(새로고침 등) 방지
-                e.preventDefault();
-
-                const file = fileRef.current?.files?.[0]; // document.querySelector 등을 사용하지 않아도 ref로 요소 특정 가능
-                // console.log(file); // 어떤 형태인지 확인
-
-                if (file) {
-                    const formData = new FormData();
-                    formData.append("file", file); // 'file'이라는 키로 파일을 추가
-
-                    // const result = await uploadFile(formData);
-                    updateFile.mutate(formData);
-                }
-            }}>
-            <input type="file" ref={fileRef} />
+        <div
+            {...getRootProps()}
+            className="w-full flex flex-col items-center py-20 border-2 border-dashed border-slate-300 cursor-pointer">
+            <input {...getInputProps()} />
             <div className="flex items-center gap-2">
-                <i className="fas fa-cloud-upload-alt text-gray-400"></i>
-                <span className="text-gray-400">
-                    드래그 앤 드롭으로 파일을 업로드해주세요
-                </span>
-            </div>
-            <button
-                type="submit" // 제출용이므로 명시
-                disabled={updateFile.isPending}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm">
                 {updateFile.isPending ? (
-                    <i className="fas fa-spinner animate-spin"></i>
+                    <>
+                        <i className="fas fa-spinner animate-spin text-gray-400"></i>
+                        <span className="text-gray-400">파일 업로드 중...</span>
+                    </>
                 ) : (
-                    "파일 선택"
+                    <>
+                        <i className="fas fa-cloud-upload-alt text-gray-400"></i>
+                        <span className="text-gray-400">
+                            {isDragActive
+                                ? "파일을 여기에 놓아주세요"
+                                : "파일을 끌어다 놓거나 클릭해서 업로드할 수 있어요"}
+                        </span>
+                    </>
                 )}
-            </button>
-        </form>
+            </div>
+        </div>
     );
 }

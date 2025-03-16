@@ -1,6 +1,5 @@
 "use server";
 
-import { FileData } from "database_type";
 import { createServerSupabaseClient } from "utils/supabase/server";
 
 function handleError(error: Error) {
@@ -8,34 +7,26 @@ function handleError(error: Error) {
     throw error;
 }
 
-// export async function saveFileToDB(fileData: FileData) {
-//     const supabase = await createServerSupabaseClient();
-//     const { data, error } = await supabase
-//         .from("file")
-//         .insert([fileData])
-//         .select();
-
-//     if (error) {
-//         handleError(error);
-//     }
-
-//     return data;
-// }
-
 export async function uploadFile(formData: FormData) {
     const supabase = await createServerSupabaseClient(); // await으로 수퍼베이스 클라이언트 생성
-    const file = formData.get("file") as File; // 'file'이라는 키로 저장했던 파일을 가져옴
+    const files = Array.from(formData.entries()).map(
+        ([name, file]) => file as File // destructuring해 file만 뽑아옴
+    );
 
-    const { data, error } = await supabase.storage
-        .from(process.env.NEXT_PUBLIC_STORAGE_BUCKET!)
-        .upload(file.name, file, { upsert: true });
-    // path는 file name으로, option 중 upsert를 사용
+    // upload
+    const results = await Promise.all(
+        files.map((file) =>
+            supabase.storage
+                .from(process.env.NEXT_PUBLIC_STORAGE_BUCKET!)
+                .upload(file.name, file, { upsert: true })
+        )
+    );
 
-    if (error) {
-        handleError(error);
+    if (results.some((result) => result.error)) {
+        throw new Error("Failed to upload one or more files");
     }
 
-    return data;
+    return results;
 }
 
 export async function searchFile(searchQuery: string) {
@@ -58,23 +49,16 @@ export async function searchFile(searchQuery: string) {
     return data;
 }
 
-// export async function getFilesFromDB(searchQuery?: string) {
-//     const supabase = await createServerSupabaseClient();
+export async function downloadFile(path: string) {
+    const supabase = await createServerSupabaseClient();
 
-//     let query = supabase.from("file").select("*");
+    const { data } = await supabase.storage
+        .from(process.env.NEXT_PUBLIC_STORAGE_BUCKET!)
+        // .download(path);
+        .getPublicUrl(path, { download: true });
 
-//     if (searchQuery) {
-//         query = query.ilike("name", `%${searchQuery}%`);
-//     }
-
-//     const { data, error } = await query;
-
-//     if (error) {
-//         handleError(error);
-//     }
-
-//     return data;
-// }
+    return data;
+}
 
 export async function deleteFile(path: string) {
     const supabase = await createServerSupabaseClient();

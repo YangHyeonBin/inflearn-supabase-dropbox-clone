@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     deleteFile,
-    // getFilesFromDB,
-    // saveFileToDB,
+    downloadFile,
     searchFile,
     uploadFile,
 } from "actions/storageActions";
@@ -19,27 +18,26 @@ export function useUploadFileMutation() {
 
     return useMutation({
         mutationFn: uploadFile, // 이렇게 해도 된다!
-        //  async (formData: FormData) => {
-        //     const data = await uploadFile(formData);
-        //     // const file = formData.get("file") as File;
-
-        //     // if (data && data.path) {
-        //     //     await saveFileToDB({
-        //     //         id: data.id,
-        //     //         name: file.name,
-        //     //         path: file.name,
-        //     //         size: file.size,
-        //     //         type: file.type,
-        //     //         created_at: new Date().toISOString(),
-        //     //         updated_at: new Date().toISOString(),
-        //     //     });
-        //     // }
-        //     return data;
-        // },
         onSuccess: (data) => {
             queryClient.invalidateQueries({
                 queryKey: ["files"],
             });
+        },
+        onError: (error) => {
+            console.error(error);
+        },
+    });
+}
+
+export function useDownloadFileMutation() {
+    return useMutation({
+        mutationFn: downloadFile,
+        onSuccess: (data) => {
+            const url = data.publicUrl;
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = url.split("/").pop()!; // file name 추출
+            link.click();
         },
         onError: (error) => {
             console.error(error);
